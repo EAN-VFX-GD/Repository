@@ -21,6 +21,22 @@ import {
 } from "@/components/ui/select";
 import { t } from "@/locales";
 import { useToast } from "@/components/ui/use-toast";
+import { Camera } from "lucide-react";
+
+interface CurrencyFormat {
+  [key: string]: {
+    symbol: string;
+    position: "before" | "after";
+  };
+}
+
+const currencyFormats: CurrencyFormat = {
+  usd: { symbol: "$", position: "before" },
+  eur: { symbol: "€", position: "before" },
+  gbp: { symbol: "£", position: "before" },
+  egp: { symbol: "ج.م", position: "after" },
+  sar: { symbol: "ر.س", position: "after" },
+};
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -29,6 +45,12 @@ export default function SettingsPage() {
     email: "mohamed.ahmed@example.com",
     company: "استوديو الإبداع",
     avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=user123",
+  });
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
 
   const [notificationSettings, setNotificationSettings] = useState({
@@ -65,15 +87,78 @@ export default function SettingsPage() {
     setProfileData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordData((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleNotificationToggle = (key: string) => {
     setNotificationSettings((prev) => ({
       ...prev,
       [key]: !prev[key as keyof typeof notificationSettings],
     }));
+
+    toast({
+      title: "تم تحديث الإعدادات",
+      description: "تم تحديث إعدادات الإشعارات بنجاح",
+    });
   };
 
   const handleDisplayChange = (key: string, value: string) => {
     setDisplaySettings((prev) => ({ ...prev, [key]: value }));
+
+    // Apply theme change immediately
+    if (key === "theme") {
+      const root = window.document.documentElement;
+      root.classList.remove("light", "dark");
+
+      if (value === "system") {
+        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+          .matches
+          ? "dark"
+          : "light";
+        root.classList.add(systemTheme);
+      } else {
+        root.classList.add(value);
+      }
+
+      toast({
+        title:
+          value === "dark" ? "تم تفعيل الوضع الداكن" : "تم تفعيل الوضع الفاتح",
+        description: "تم تغيير سمة التطبيق بنجاح",
+      });
+    }
+
+    if (key === "currency") {
+      toast({
+        title: "تم تغيير العملة",
+        description: `تم تغيير العملة إلى ${getCurrencyName(value)}`,
+      });
+    }
+
+    if (key === "dateFormat") {
+      toast({
+        title: "تم تغيير تنسيق التاريخ",
+        description: `تم تغيير تنسيق التاريخ إلى ${value}`,
+      });
+    }
+  };
+
+  const getCurrencyName = (code: string) => {
+    switch (code) {
+      case "usd":
+        return "الدولار الأمريكي ($)";
+      case "eur":
+        return "اليورو (€)";
+      case "gbp":
+        return "الجنيه الإسترليني (£)";
+      case "egp":
+        return "الجنيه المصري (ج.م)";
+      case "sar":
+        return "الريال السعودي (ر.س)";
+      default:
+        return code;
+    }
   };
 
   const handleSaveDisplaySettings = () => {
@@ -90,8 +175,69 @@ export default function SettingsPage() {
     });
   };
 
+  const handleUpdatePassword = () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "خطأ في كلمة المرور",
+        description: "كلمة المرور الجديدة وتأكيدها غير متطابقين",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      toast({
+        title: "كلمة المرور قصيرة",
+        description: "يجب أن تكون كلمة المرور 8 أحرف على الأقل",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "تم تحديث كلمة المرور",
+      description: "تم تغيير كلمة المرور بنجاح",
+    });
+
+    setPasswordData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  };
+
+  const handleSaveNotificationSettings = () => {
+    toast({
+      title: "تم حفظ التفضيلات",
+      description: "تم تحديث تفضيلات الإشعارات بنجاح",
+    });
+  };
+
+  const handleAvatarChange = () => {
+    // Generate a new random avatar
+    const newSeed = Math.random().toString(36).substring(2, 8);
+    setProfileData((prev) => ({
+      ...prev,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${newSeed}`,
+    }));
+
+    toast({
+      title: "تم تغيير الصورة الرمزية",
+      description: "تم تحديث الصورة الرمزية بنجاح",
+    });
+  };
+
+  // Format currency based on settings
+  const formatCurrency = (amount: number) => {
+    const format = currencyFormats[displaySettings.currency];
+    const formattedAmount = amount.toLocaleString();
+    return format.position === "before"
+      ? `${format.symbol}${formattedAmount}`
+      : `${formattedAmount} ${format.symbol}`;
+  };
+
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
           {t("settingsTitle")}
@@ -113,13 +259,28 @@ export default function SettingsPage() {
               <CardDescription>{t("updatePersonalBusiness")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center space-x-4 flex-row-reverse">
-                <img
-                  src={profileData.avatar}
-                  alt="Profile"
-                  className="h-20 w-20 rounded-full"
-                />
-                <Button variant="outline">{t("changeAvatar")}</Button>
+              <div className="flex items-center gap-4 flex-row">
+                <div className="relative">
+                  <img
+                    src={profileData.avatar}
+                    alt="Profile"
+                    className="h-20 w-20 rounded-full border-2 border-primary"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="absolute -bottom-2 -right-2 rounded-full bg-primary text-white hover:bg-primary/90"
+                    onClick={handleAvatarChange}
+                  >
+                    <Camera className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div>
+                  <h3 className="font-medium">{profileData.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {profileData.email}
+                  </p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -155,7 +316,12 @@ export default function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleSaveProfile}>{t("saveChanges")}</Button>
+              <Button
+                onClick={handleSaveProfile}
+                className="bg-[hsl(var(--vodafone-red))] hover:bg-[hsl(var(--vodafone-red-dark))]"
+              >
+                {t("saveChanges")}
+              </Button>
             </CardFooter>
           </Card>
 
@@ -166,36 +332,55 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="current-password">{t("currentPassword")}</Label>
+                <Label htmlFor="currentPassword">{t("currentPassword")}</Label>
                 <Input
-                  id="current-password"
+                  id="currentPassword"
+                  name="currentPassword"
                   type="password"
                   placeholder="••••••••"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="new-password">{t("newPassword")}</Label>
+                  <Label htmlFor="newPassword">{t("newPassword")}</Label>
                   <Input
-                    id="new-password"
+                    id="newPassword"
+                    name="newPassword"
                     type="password"
                     placeholder="••••••••"
+                    value={passwordData.newPassword}
+                    onChange={handlePasswordChange}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">
+                  <Label htmlFor="confirmPassword">
                     {t("confirmPassword")}
                   </Label>
                   <Input
-                    id="confirm-password"
+                    id="confirmPassword"
+                    name="confirmPassword"
                     type="password"
                     placeholder="••••••••"
+                    value={passwordData.confirmPassword}
+                    onChange={handlePasswordChange}
                   />
                 </div>
               </div>
             </CardContent>
             <CardFooter>
-              <Button>{t("updatePasswordButton")}</Button>
+              <Button
+                onClick={handleUpdatePassword}
+                className="bg-[hsl(var(--vodafone-red))] hover:bg-[hsl(var(--vodafone-red-dark))]"
+                disabled={
+                  !passwordData.currentPassword ||
+                  !passwordData.newPassword ||
+                  !passwordData.confirmPassword
+                }
+              >
+                {t("updatePasswordButton")}
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -268,7 +453,12 @@ export default function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button>{t("savePreferences")}</Button>
+              <Button
+                onClick={handleSaveNotificationSettings}
+                className="bg-[hsl(var(--vodafone-red))] hover:bg-[hsl(var(--vodafone-red-dark))]"
+              >
+                {t("savePreferences")}
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -316,6 +506,9 @@ export default function SettingsPage() {
                     <SelectItem value="sar">SAR (ر.س)</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-sm text-muted-foreground mt-1">
+                  مثال: {formatCurrency(1234.56)}
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -338,7 +531,10 @@ export default function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleSaveDisplaySettings}>
+              <Button
+                onClick={handleSaveDisplaySettings}
+                className="bg-[hsl(var(--vodafone-red))] hover:bg-[hsl(var(--vodafone-red-dark))]"
+              >
                 {t("saveSettings")}
               </Button>
             </CardFooter>

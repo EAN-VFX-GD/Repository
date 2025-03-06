@@ -3,6 +3,7 @@ import { useRoutes, Routes, Route } from "react-router-dom";
 import routes from "tempo-routes";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
 import { ProjectProvider } from "./context/ProjectContext";
+import { Toaster } from "@/components/ui/toaster";
 
 // Lazy load pages for better performance
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -39,6 +40,7 @@ function App() {
             </Route>
           </Routes>
           {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
+          <Toaster />
         </>
       </Suspense>
     </ProjectProvider>

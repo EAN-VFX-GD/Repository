@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Plus, Search } from "lucide-react";
+import { Bell, Plus, Search, Moon, Sun } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -14,12 +14,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useProjects } from "@/context/ProjectContext";
 import { t } from "@/locales";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Header() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { projects } = useProjects();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return document.documentElement.classList.contains("dark");
+    }
+    return false;
+  });
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value.toLowerCase();
@@ -56,6 +64,17 @@ export default function Header() {
     setSearchResults([]);
   };
 
+  const toggleTheme = () => {
+    const newMode = !isDarkMode;
+    setIsDarkMode(newMode);
+    document.documentElement.classList.toggle("dark", newMode);
+
+    toast({
+      title: newMode ? "تم تفعيل الوضع الداكن" : "تم تفعيل الوضع الفاتح",
+      description: "تم تغيير سمة التطبيق بنجاح",
+    });
+  };
+
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
       <div className="hidden md:flex md:flex-1 md:items-center md:gap-4">
@@ -64,17 +83,16 @@ export default function Header() {
           <Input
             type="search"
             placeholder={t("search")}
-            className="w-64 pr-8 bg-background text-right"
+            className="w-64 pr-8 bg-background"
             value={searchQuery}
             onChange={handleSearch}
-            dir="rtl"
           />
           {searchResults.length > 0 && searchQuery.length > 2 && (
             <div className="absolute top-full right-0 w-full mt-1 bg-background border rounded-md shadow-lg z-50">
               {searchResults.map((project) => (
                 <div
                   key={project.id}
-                  className="p-2 hover:bg-secondary cursor-pointer text-right"
+                  className="p-2 hover:bg-secondary cursor-pointer"
                   onClick={() => handleSearchResultClick(project.id)}
                 >
                   <div className="font-medium">{project.title}</div>
@@ -90,18 +108,30 @@ export default function Header() {
       <Button variant="outline" size="icon" className="md:hidden">
         <Search className="h-4 w-4" />
       </Button>
-      <Button className="hidden md:flex gap-2" onClick={handleNewProject}>
+      <Button
+        className="hidden md:flex gap-2 bg-[hsl(var(--vodafone-red))] hover:bg-[hsl(var(--vodafone-red-dark))]"
+        onClick={handleNewProject}
+      >
         <Plus className="h-4 w-4" />
         <span>{t("newProject")}</span>
       </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="mr-auto"
-        onClick={handleNotifications}
-      >
-        <Bell className="h-5 w-5" />
-      </Button>
+      <div className="flex items-center gap-2 mr-auto">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          title={isDarkMode ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي"}
+        >
+          {isDarkMode ? (
+            <Sun className="h-5 w-5" />
+          ) : (
+            <Moon className="h-5 w-5" />
+          )}
+        </Button>
+        <Button variant="ghost" size="icon" onClick={handleNotifications}>
+          <Bell className="h-5 w-5" />
+        </Button>
+      </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Avatar className="cursor-pointer">

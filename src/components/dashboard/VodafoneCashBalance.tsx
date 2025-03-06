@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Smartphone, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import {
+  Smartphone,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  RefreshCw,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -11,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 
 interface VodafoneCashBalanceProps {
   balance: number;
@@ -23,11 +29,13 @@ export default function VodafoneCashBalance({
   phoneNumber = "01012345678",
   lastUpdate: initialLastUpdate = new Date().toLocaleString("ar-EG"),
 }: Partial<VodafoneCashBalanceProps>) {
+  const { toast } = useToast();
   const [balance, setBalance] = useState(initialBalance);
   const [lastUpdate, setLastUpdate] = useState(initialLastUpdate);
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [amount, setAmount] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleDeposit = () => {
     if (amount && !isNaN(Number(amount))) {
@@ -35,6 +43,11 @@ export default function VodafoneCashBalance({
       setLastUpdate(new Date().toLocaleString("ar-EG"));
       setAmount("");
       setDepositDialogOpen(false);
+
+      toast({
+        title: "تم الإيداع بنجاح",
+        description: `تم إيداع ${Number(amount).toLocaleString()} ج.م في رصيدك`,
+      });
     }
   };
 
@@ -44,7 +57,26 @@ export default function VodafoneCashBalance({
       setLastUpdate(new Date().toLocaleString("ar-EG"));
       setAmount("");
       setWithdrawDialogOpen(false);
+
+      toast({
+        title: "تم السحب بنجاح",
+        description: `تم سحب ${Number(amount).toLocaleString()} ج.م من رصيدك`,
+      });
     }
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    // Simulate a refresh delay
+    setTimeout(() => {
+      setLastUpdate(new Date().toLocaleString("ar-EG"));
+      setIsRefreshing(false);
+
+      toast({
+        title: "تم تحديث الرصيد",
+        description: "تم تحديث رصيد فودافون كاش بنجاح",
+      });
+    }, 1000);
   };
 
   return (
@@ -54,7 +86,17 @@ export default function VodafoneCashBalance({
           <CardTitle className="text-lg font-medium text-white">
             رصيد فودافون كاش
           </CardTitle>
-          <Smartphone className="h-5 w-5 text-white" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-white/10 -ml-2"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold">
@@ -70,14 +112,14 @@ export default function VodafoneCashBalance({
               className="flex-1 bg-white/10 hover:bg-white/20 border-white/20 text-white"
               onClick={() => setDepositDialogOpen(true)}
             >
-              <ArrowDownCircle className="h-4 w-4 mr-2" /> إيداع
+              <ArrowDownCircle className="h-4 w-4 ml-2" /> إيداع
             </Button>
             <Button
               variant="outline"
               className="flex-1 bg-white/10 hover:bg-white/20 border-white/20 text-white"
               onClick={() => setWithdrawDialogOpen(true)}
             >
-              <ArrowUpCircle className="h-4 w-4 mr-2" /> سحب
+              <ArrowUpCircle className="h-4 w-4 ml-2" /> سحب
             </Button>
           </div>
         </CardContent>
@@ -85,7 +127,7 @@ export default function VodafoneCashBalance({
 
       {/* Deposit Dialog */}
       <Dialog open={depositDialogOpen} onOpenChange={setDepositDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]" dir="rtl">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>إيداع رصيد</DialogTitle>
             <DialogDescription>
@@ -100,19 +142,23 @@ export default function VodafoneCashBalance({
                 placeholder="أدخل المبلغ"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="text-right"
               />
             </div>
           </div>
           <DialogFooter className="flex justify-start">
-            <Button onClick={handleDeposit}>إيداع</Button>
+            <Button
+              onClick={handleDeposit}
+              className="bg-[hsl(var(--vodafone-red))] hover:bg-[hsl(var(--vodafone-red-dark))]"
+            >
+              إيداع
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Withdraw Dialog */}
       <Dialog open={withdrawDialogOpen} onOpenChange={setWithdrawDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]" dir="rtl">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>سحب رصيد</DialogTitle>
             <DialogDescription>
@@ -127,7 +173,6 @@ export default function VodafoneCashBalance({
                 placeholder="أدخل المبلغ"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="text-right"
                 max={balance}
               />
               {Number(amount) > balance && (
@@ -143,6 +188,7 @@ export default function VodafoneCashBalance({
               disabled={
                 !amount || isNaN(Number(amount)) || Number(amount) > balance
               }
+              className="bg-[hsl(var(--vodafone-red))] hover:bg-[hsl(var(--vodafone-red-dark))]"
             >
               سحب
             </Button>
