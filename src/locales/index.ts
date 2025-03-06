@@ -1,7 +1,9 @@
 import { ar } from "./ar";
+import { en } from "./en";
 
 export const locales = {
   ar,
+  en,
 };
 
 export type LocaleKey = keyof typeof ar;
