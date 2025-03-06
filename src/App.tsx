@@ -1,8 +1,9 @@
-import { Suspense, lazy } from "react";
-import { useRoutes, Routes, Route } from "react-router-dom";
+import { Suspense, lazy, useEffect } from "react";
+import { useRoutes, Routes, Route, Navigate } from "react-router-dom";
 import routes from "tempo-routes";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
 import { ProjectProvider } from "./context/ProjectContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
 
 // Lazy load pages for better performance
@@ -14,8 +15,40 @@ const FinancesPage = lazy(() => import("./pages/FinancesPage"));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/RegisterPage"));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
-function App() {
+// Protected route component
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center">
+        جاري التحميل...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function AppRoutes() {
+  const { user, loading } = useAuth();
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (!loading && user && window.location.pathname === "/login") {
+      window.location.href = "/";
+    }
+  }, [user, loading]);
+
   return (
     <ProjectProvider>
       <Suspense
@@ -27,7 +60,21 @@ function App() {
       >
         <>
           <Routes>
-            <Route path="/" element={<DashboardLayout />}>
+            {/* Auth routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+            {/* Protected routes */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<Dashboard />} />
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="projects/new" element={<NewProject />} />
@@ -44,6 +91,14 @@ function App() {
         </>
       </Suspense>
     </ProjectProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 }
 

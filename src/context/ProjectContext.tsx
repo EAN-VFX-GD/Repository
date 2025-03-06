@@ -1,5 +1,8 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { Project, Expense, FinancialSummary } from "@/types/project";
+import { useAuth } from "./AuthContext";
+import { useToast } from "@/components/ui/use-toast";
+import * as api from "@/services/api";
 
 interface ProjectContextType {
   projects: Project[];
@@ -9,281 +12,284 @@ interface ProjectContextType {
       Project,
       "id" | "createdAt" | "updatedAt" | "completionPercentage"
     >,
-  ) => void;
-  updateProject: (project: Project) => void;
-  deleteProject: (id: string) => void;
-  addExpense: (projectId: string, expense: Omit<Expense, "id">) => void;
-  updateExpense: (projectId: string, expense: Expense) => void;
-  deleteExpense: (projectId: string, expenseId: string) => void;
+  ) => Promise<void>;
+  updateProject: (project: Project) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
+  addExpense: (
+    projectId: string,
+    expense: Omit<Expense, "id">,
+  ) => Promise<void>;
+  updateExpense: (projectId: string, expense: Expense) => Promise<void>;
+  deleteExpense: (projectId: string, expenseId: string) => Promise<void>;
   updateProjectProgress: (
     projectId: string,
     completionPercentage: number,
-  ) => void;
+  ) => Promise<void>;
+  loading: boolean;
+  refreshProjects: () => Promise<void>;
 }
 
-const initialProjects: Project[] = [
-  {
-    id: "1",
-    title: "Corporate Brand Video",
-    client: "Acme Inc.",
-    description: "Creating a 2-minute brand video for their website homepage",
-    startDate: "2023-10-15",
-    dueDate: "2023-11-30",
-    budget: 3500,
-    hourlyRate: 75,
-    hoursWorked: 25,
-    expenses: [
-      {
-        id: "e1",
-        description: "Stock footage",
-        amount: 120,
-        date: "2023-10-18",
-        category: "Assets",
-      },
-      {
-        id: "e2",
-        description: "Voice over artist",
-        amount: 250,
-        date: "2023-10-22",
-        category: "Contractor",
-      },
-    ],
-    status: "in-progress",
-    completionPercentage: 65,
-    category: "Video Editing",
-    createdAt: "2023-10-10",
-    updatedAt: "2023-10-25",
-  },
-  {
-    id: "2",
-    title: "Website Redesign",
-    client: "TechStart",
-    description: "Complete redesign of company website with new branding",
-    startDate: "2023-09-01",
-    dueDate: "2023-12-15",
-    budget: 5800,
-    hourlyRate: 85,
-    hoursWorked: 40,
-    status: "in-progress",
-    completionPercentage: 35,
-    category: "Web Design",
-    createdAt: "2023-08-25",
-    updatedAt: "2023-10-20",
-  },
-  {
-    id: "3",
-    title: "Product Photography",
-    client: "StyleCo",
-    description: "Product photography for new clothing line",
-    startDate: "2023-10-01",
-    dueDate: "2023-10-15",
-    budget: 1200,
-    hourlyRate: 60,
-    hoursWorked: 20,
-    status: "completed",
-    completionPercentage: 100,
-    category: "Photography",
-    createdAt: "2023-09-28",
-    updatedAt: "2023-10-16",
-  },
-  {
-    id: "4",
-    title: "Social Media Campaign",
-    client: "FreshFoods",
-    description: "Design assets for Instagram and Facebook campaign",
-    startDate: "2023-11-01",
-    dueDate: "2023-12-01",
-    budget: 2400,
-    hourlyRate: 65,
-    hoursWorked: 10,
-    status: "pending",
-    completionPercentage: 15,
-    category: "Social Media",
-    createdAt: "2023-10-25",
-    updatedAt: "2023-10-28",
-  },
-];
-
 const initialFinancialSummary: FinancialSummary = {
-  totalPortfolioValue: 24500,
-  pendingPayments: 8750,
-  projectedEarnings: 32000,
-  completedProjects: 12,
-  activeProjects: 5,
+  totalPortfolioValue: 0,
+  pendingPayments: 0,
+  projectedEarnings: 0,
+  completedProjects: 0,
+  activeProjects: 0,
 };
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
-export function ProjectProvider({ children }: { children: ReactNode }) {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+function ProjectProvider({ children }: { children: React.ReactNode }) {
+  const [projects, setProjects] = useState<Project[]>([]);
   const [financialSummary, setFinancialSummary] = useState<FinancialSummary>(
     initialFinancialSummary,
   );
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  // Calculate financial summary based on projects
-  const calculateFinancialSummary = (projectsList: Project[]) => {
-    const completed = projectsList.filter(
-      (p) => p.status === "completed",
-    ).length;
-    const active = projectsList.filter(
-      (p) => p.status === "in-progress" || p.status === "pending",
-    ).length;
+  // Load projects and financial summary when user is authenticated
+  useEffect(() => {
+    if (user) {
+      refreshProjects();
+    }
+  }, [user]);
 
-    const totalValue = projectsList.reduce(
-      (sum, project) => sum + project.budget,
-      0,
-    );
+  // Refresh projects and financial summary
+  const refreshProjects = async () => {
+    if (!user) return;
 
-    const pending = projectsList
-      .filter((p) => p.status !== "completed" && p.status !== "cancelled")
-      .reduce((sum, project) => {
-        const projectTotal = project.budget;
-        const percentRemaining = 1 - project.completionPercentage / 100;
-        return sum + projectTotal * percentRemaining;
-      }, 0);
+    setLoading(true);
+    try {
+      // Load projects
+      const projectsData = await api.getProjects();
+      setProjects(projectsData);
 
-    const projected = projectsList
-      .filter((p) => p.status !== "completed" && p.status !== "cancelled")
-      .reduce((sum, project) => {
-        const dueDate = new Date(project.dueDate);
-        const now = new Date();
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(now.getDate() + 30);
-
-        if (dueDate <= thirtyDaysFromNow) {
-          return sum + project.budget;
-        }
-        return sum;
-      }, 0);
-
-    setFinancialSummary({
-      totalPortfolioValue: totalValue,
-      pendingPayments: pending,
-      projectedEarnings: projected,
-      completedProjects: completed,
-      activeProjects: active,
-    });
+      // Load financial summary
+      const summaryData = await api.getFinancialSummary();
+      setFinancialSummary(summaryData);
+    } catch (error: any) {
+      toast({
+        title: "خطأ في تحميل البيانات",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Add a new project
-  const addProject = (
+  const addProject = async (
     project: Omit<
       Project,
       "id" | "createdAt" | "updatedAt" | "completionPercentage"
     >,
   ) => {
-    const now = new Date().toISOString();
-    const newProject: Project = {
-      ...project,
-      id: `${projects.length + 1}`,
-      completionPercentage: 0,
-      createdAt: now,
-      updatedAt: now,
-      expenses: [],
-    };
+    try {
+      const newProject = await api.createProject(project);
+      setProjects([...projects, newProject]);
+      refreshProjects(); // Refresh to update financial summary
 
-    const updatedProjects = [...projects, newProject];
-    setProjects(updatedProjects);
-    calculateFinancialSummary(updatedProjects);
+      toast({
+        title: "تم إنشاء المشروع بنجاح",
+        description: `تم إنشاء مشروع ${newProject.title} بنجاح`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "خطأ في إنشاء المشروع",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // Update an existing project
-  const updateProject = (project: Project) => {
-    const updatedProjects = projects.map((p) =>
-      p.id === project.id
-        ? { ...project, updatedAt: new Date().toISOString() }
-        : p,
-    );
-    setProjects(updatedProjects);
-    calculateFinancialSummary(updatedProjects);
+  const updateProject = async (project: Project) => {
+    try {
+      const updatedProject = await api.updateProject(project);
+      setProjects(
+        projects.map((p) => (p.id === updatedProject.id ? updatedProject : p)),
+      );
+      refreshProjects(); // Refresh to update financial summary
+
+      toast({
+        title: "تم تحديث المشروع بنجاح",
+        description: `تم تحديث مشروع ${updatedProject.title} بنجاح`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "خطأ في تحديث المشروع",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // Delete a project
-  const deleteProject = (id: string) => {
-    const updatedProjects = projects.filter((p) => p.id !== id);
-    setProjects(updatedProjects);
-    calculateFinancialSummary(updatedProjects);
+  const deleteProject = async (id: string) => {
+    try {
+      await api.deleteProject(id);
+      setProjects(projects.filter((p) => p.id !== id));
+      refreshProjects(); // Refresh to update financial summary
+
+      toast({
+        title: "تم حذف المشروع بنجاح",
+        description: "تم حذف المشروع وجميع البيانات المرتبطة به",
+      });
+    } catch (error: any) {
+      toast({
+        title: "خطأ في حذف المشروع",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // Add an expense to a project
-  const addExpense = (projectId: string, expense: Omit<Expense, "id">) => {
-    const updatedProjects = projects.map((project) => {
-      if (project.id === projectId) {
-        const expenses = project.expenses || [];
-        return {
-          ...project,
-          expenses: [
-            ...expenses,
-            { ...expense, id: `e${expenses.length + 1}` },
-          ],
-          updatedAt: new Date().toISOString(),
-        };
-      }
-      return project;
-    });
+  const addExpense = async (
+    projectId: string,
+    expense: Omit<Expense, "id">,
+  ) => {
+    try {
+      const newExpense = await api.addExpense(projectId, expense);
 
-    setProjects(updatedProjects);
-    calculateFinancialSummary(updatedProjects);
+      // Update the local state
+      const updatedProjects = projects.map((project) => {
+        if (project.id === projectId) {
+          const expenses = project.expenses || [];
+          return {
+            ...project,
+            expenses: [...expenses, newExpense],
+          };
+        }
+        return project;
+      });
+
+      setProjects(updatedProjects);
+      refreshProjects(); // Refresh to update financial summary
+
+      toast({
+        title: "تم إضافة المصروف بنجاح",
+        description: `تم إضافة مصروف ${newExpense.description} بنجاح`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "خطأ في إضافة المصروف",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // Update an expense
-  const updateExpense = (projectId: string, expense: Expense) => {
-    const updatedProjects = projects.map((project) => {
-      if (project.id === projectId && project.expenses) {
-        return {
-          ...project,
-          expenses: project.expenses.map((e) =>
-            e.id === expense.id ? expense : e,
-          ),
-          updatedAt: new Date().toISOString(),
-        };
-      }
-      return project;
-    });
+  const updateExpense = async (projectId: string, expense: Expense) => {
+    try {
+      const updatedExpense = await api.updateExpense(projectId, expense);
 
-    setProjects(updatedProjects);
-    calculateFinancialSummary(updatedProjects);
+      // Update the local state
+      const updatedProjects = projects.map((project) => {
+        if (project.id === projectId && project.expenses) {
+          return {
+            ...project,
+            expenses: project.expenses.map((e) =>
+              e.id === updatedExpense.id ? updatedExpense : e,
+            ),
+          };
+        }
+        return project;
+      });
+
+      setProjects(updatedProjects);
+      refreshProjects(); // Refresh to update financial summary
+
+      toast({
+        title: "تم تحديث المصروف بنجاح",
+        description: `تم تحديث مصروف ${updatedExpense.description} بنجاح`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "خطأ في تحديث المصروف",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // Delete an expense
-  const deleteExpense = (projectId: string, expenseId: string) => {
-    const updatedProjects = projects.map((project) => {
-      if (project.id === projectId && project.expenses) {
-        return {
-          ...project,
-          expenses: project.expenses.filter((e) => e.id !== expenseId),
-          updatedAt: new Date().toISOString(),
-        };
-      }
-      return project;
-    });
+  const deleteExpense = async (projectId: string, expenseId: string) => {
+    try {
+      await api.deleteExpense(projectId, expenseId);
 
-    setProjects(updatedProjects);
-    calculateFinancialSummary(updatedProjects);
+      // Update the local state
+      const updatedProjects = projects.map((project) => {
+        if (project.id === projectId && project.expenses) {
+          return {
+            ...project,
+            expenses: project.expenses.filter((e) => e.id !== expenseId),
+          };
+        }
+        return project;
+      });
+
+      setProjects(updatedProjects);
+      refreshProjects(); // Refresh to update financial summary
+
+      toast({
+        title: "تم حذف المصروف بنجاح",
+        description: "تم حذف المصروف بنجاح",
+      });
+    } catch (error: any) {
+      toast({
+        title: "خطأ في حذف المصروف",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // Update project progress
-  const updateProjectProgress = (
+  const updateProjectProgress = async (
     projectId: string,
     completionPercentage: number,
   ) => {
-    const updatedProjects = projects.map((project) => {
-      if (project.id === projectId) {
-        // If completion is 100%, set status to completed
-        const status =
-          completionPercentage === 100 ? "completed" : project.status;
-        return {
-          ...project,
-          completionPercentage,
-          status,
-          updatedAt: new Date().toISOString(),
-        };
-      }
-      return project;
-    });
+    try {
+      const project = projects.find((p) => p.id === projectId);
+      if (!project) throw new Error("المشروع غير موجود");
 
-    setProjects(updatedProjects);
-    calculateFinancialSummary(updatedProjects);
+      // If completion is 100%, set status to completed
+      const status =
+        completionPercentage === 100 ? "completed" : project.status;
+
+      const updatedProject = await api.updateProject({
+        ...project,
+        completionPercentage,
+        status,
+      });
+
+      setProjects(
+        projects.map((p) => (p.id === updatedProject.id ? updatedProject : p)),
+      );
+      refreshProjects(); // Refresh to update financial summary
+
+      toast({
+        title: "تم تحديث تقدم المشروع بنجاح",
+        description: `تم تحديث تقدم المشروع إلى ${completionPercentage}%`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "خطأ في تحديث تقدم المشروع",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   return (
@@ -298,6 +304,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         updateExpense,
         deleteExpense,
         updateProjectProgress,
+        loading,
+        refreshProjects,
       }}
     >
       {children}
@@ -305,10 +313,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useProjects() {
+function useProjects() {
   const context = useContext(ProjectContext);
   if (context === undefined) {
     throw new Error("useProjects must be used within a ProjectProvider");
   }
   return context;
 }
+
+export { ProjectProvider, useProjects };

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Plus, Search, Moon, Sun } from "lucide-react";
+import { Bell, Plus, Search, Moon, Sun, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useProjects } from "@/context/ProjectContext";
+import { useAuth } from "@/context/AuthContext";
 import { t } from "@/locales";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -20,6 +21,7 @@ export default function Header() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { projects } = useProjects();
+  const { signOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -73,6 +75,15 @@ export default function Header() {
       title: newMode ? "تم تفعيل الوضع الداكن" : "تم تفعيل الوضع الفاتح",
       description: "تم تغيير سمة التطبيق بنجاح",
     });
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate("/login");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   return (
@@ -149,7 +160,8 @@ export default function Header() {
             التفضيلات
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => handleProfileClick("/logout")}>
+          <DropdownMenuItem onClick={handleLogout}>
+            <LogOut className="h-4 w-4 ml-2" />
             {t("logout")}
           </DropdownMenuItem>
         </DropdownMenuContent>
