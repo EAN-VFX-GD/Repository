@@ -43,13 +43,23 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log("Attempting to sign in with email:", email);
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Sign in error:", error);
+        throw error;
+      }
+
+      console.log(
+        "Sign in successful, session:",
+        data.session ? "exists" : "null",
+      );
     } catch (error: any) {
+      console.error("Sign in exception:", error);
       toast({
         title: "خطأ في تسجيل الدخول",
         description: error.message,
