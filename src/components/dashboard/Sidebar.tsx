@@ -9,6 +9,7 @@ import {
   Bell,
   LogOut,
 } from "lucide-react";
+import { t } from "@/locales";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -41,37 +42,37 @@ export default function Sidebar() {
   const routes = [
     {
       icon: <LayoutDashboard className="h-5 w-5" />,
-      label: "Dashboard",
+      label: t("dashboard"),
       href: "/",
       active: pathname === "/",
     },
     {
       icon: <FolderKanban className="h-5 w-5" />,
-      label: "Projects",
+      label: t("projects"),
       href: "/projects",
       active: pathname.startsWith("/projects"),
     },
     {
       icon: <DollarSign className="h-5 w-5" />,
-      label: "Finances",
+      label: t("finances"),
       href: "/finances",
       active: pathname.startsWith("/finances"),
     },
     {
       icon: <BarChart3 className="h-5 w-5" />,
-      label: "Analytics",
+      label: t("analytics"),
       href: "/analytics",
       active: pathname.startsWith("/analytics"),
     },
     {
       icon: <Bell className="h-5 w-5" />,
-      label: "Notifications",
+      label: t("notifications"),
       href: "/notifications",
       active: pathname.startsWith("/notifications"),
     },
     {
       icon: <Settings className="h-5 w-5" />,
-      label: "Settings",
+      label: t("settings"),
       href: "/settings",
       active: pathname.startsWith("/settings"),
     },
@@ -81,7 +82,7 @@ export default function Sidebar() {
     <aside className="hidden md:flex md:w-64 md:flex-col">
       <div className="flex flex-col flex-1 min-h-0 border-r bg-card">
         <div className="flex items-center h-16 flex-shrink-0 px-4 border-b">
-          <h1 className="text-xl font-semibold">Project Tracker</h1>
+          <h1 className="text-xl font-semibold">متتبع المشاريع</h1>
         </div>
         <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
           <nav className="mt-5 flex-1 px-3 space-y-1">
@@ -98,7 +99,7 @@ export default function Sidebar() {
           <div className="px-3 mt-auto">
             <NavItem
               icon={<LogOut className="h-5 w-5" />}
-              label="Logout"
+              label={t("logout")}
               href="/logout"
             />
           </div>

@@ -7,67 +7,62 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FinancialSummary from "@/components/dashboard/FinancialSummary";
+import FinancialChart from "@/components/dashboard/FinancialChart";
+import { useProjects } from "@/context/ProjectContext";
+import { t } from "@/locales";
 
 export default function FinancesPage() {
+  const { projects, financialSummary } = useProjects();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Finances</h1>
-        <p className="text-muted-foreground">
-          Track your income, expenses, and financial projections
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {t("financesTitle")}
+        </h1>
+        <p className="text-muted-foreground">{t("financesSubtitle")}</p>
       </div>
 
-      <FinancialSummary />
+      <FinancialSummary data={financialSummary} />
 
       <Tabs defaultValue="overview">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="income">Income</TabsTrigger>
-          <TabsTrigger value="expenses">Expenses</TabsTrigger>
+          <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
+          <TabsTrigger value="income">{t("income")}</TabsTrigger>
+          <TabsTrigger value="expenses">{t("expenses")}</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Financial Overview</CardTitle>
-              <CardDescription>
-                Your financial summary for the current period
-              </CardDescription>
+              <CardTitle>{t("financialOverview")}</CardTitle>
+              <CardDescription>{t("financialSummaryPeriod")}</CardDescription>
             </CardHeader>
-            <CardContent className="h-[300px] flex items-center justify-center">
-              <p className="text-muted-foreground">
-                Financial charts will be displayed here
-              </p>
+            <CardContent className="h-[300px]">
+              <FinancialChart projects={projects} type="overview" />
             </CardContent>
           </Card>
         </TabsContent>
         <TabsContent value="income" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Income Breakdown</CardTitle>
-              <CardDescription>
-                Your income sources and projections
-              </CardDescription>
+              <CardTitle>{t("incomeBreakdown")}</CardTitle>
+              <CardDescription>{t("incomeSourcesProjections")}</CardDescription>
             </CardHeader>
-            <CardContent className="h-[300px] flex items-center justify-center">
-              <p className="text-muted-foreground">
-                Income charts will be displayed here
-              </p>
+            <CardContent className="h-[300px]">
+              <FinancialChart projects={projects} type="income" />
             </CardContent>
           </Card>
         </TabsContent>
         <TabsContent value="expenses" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Expense Tracking</CardTitle>
+              <CardTitle>{t("expenseTracking")}</CardTitle>
               <CardDescription>
-                Your expense categories and spending
+                {t("expenseCategoriesSpending")}
               </CardDescription>
             </CardHeader>
-            <CardContent className="h-[300px] flex items-center justify-center">
-              <p className="text-muted-foreground">
-                Expense charts will be displayed here
-              </p>
+            <CardContent className="h-[300px]">
+              <FinancialChart projects={projects} type="expenses" />
             </CardContent>
           </Card>
         </TabsContent>

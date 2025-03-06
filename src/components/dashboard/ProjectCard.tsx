@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Project } from "@/types/project";
 import { formatDistanceToNow } from "date-fns";
+import { t } from "@/locales";
 
 interface ProjectCardProps {
   project: Project;
@@ -19,6 +20,13 @@ const statusColors = {
   "in-progress": "bg-blue-500",
   completed: "bg-green-500",
   cancelled: "bg-red-500",
+};
+
+const statusTranslations = {
+  pending: "قيد الانتظار",
+  "in-progress": "قيد التنفيذ",
+  completed: "مكتمل",
+  cancelled: "ملغي",
 };
 
 export default function ProjectCard({ project, onClick }: ProjectCardProps) {
@@ -41,7 +49,7 @@ export default function ProjectCard({ project, onClick }: ProjectCardProps) {
           <Badge
             variant={project.status === "completed" ? "default" : "outline"}
           >
-            {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+            {statusTranslations[project.status]}
           </Badge>
         </div>
       </CardHeader>
@@ -49,18 +57,18 @@ export default function ProjectCard({ project, onClick }: ProjectCardProps) {
         <div className="space-y-3">
           <div>
             <div className="flex justify-between text-sm mb-1">
-              <span>Progress</span>
+              <span>{t("progress")}</span>
               <span>{project.completionPercentage}%</span>
             </div>
             <Progress value={project.completionPercentage} className="h-2" />
           </div>
           <div className="flex justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Budget</p>
+              <p className="text-sm text-muted-foreground">{t("budget")}</p>
               <p className="font-medium">${project.budget.toLocaleString()}</p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-muted-foreground">Due</p>
+              <p className="text-sm text-muted-foreground">{t("due")}</p>
               <p className="font-medium">{timeRemaining}</p>
             </div>
           </div>

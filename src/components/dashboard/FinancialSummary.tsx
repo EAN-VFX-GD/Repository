@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, TrendingUp, Clock, CheckCircle } from "lucide-react";
 import { FinancialSummary as FinancialSummaryType } from "@/types/project";
+import { t } from "@/locales";
 
 interface FinancialSummaryProps {
   data: FinancialSummaryType;
@@ -20,7 +21,7 @@ export default function FinancialSummary({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
-            Total Portfolio Value
+            {t("totalPortfolioValue")}
           </CardTitle>
           <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
@@ -29,14 +30,14 @@ export default function FinancialSummary({
             ${data.totalPortfolioValue.toLocaleString()}
           </div>
           <p className="text-xs text-muted-foreground">
-            Lifetime project value
+            {t("lifetimeProjectValue")}
           </p>
         </CardContent>
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
-            Pending Payments
+            {t("pendingPayments")}
           </CardTitle>
           <Clock className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
@@ -44,13 +45,15 @@ export default function FinancialSummary({
           <div className="text-2xl font-bold">
             ${data.pendingPayments.toLocaleString()}
           </div>
-          <p className="text-xs text-muted-foreground">Awaiting payment</p>
+          <p className="text-xs text-muted-foreground">
+            {t("awaitingPayment")}
+          </p>
         </CardContent>
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
-            Projected Earnings
+            {t("projectedEarnings")}
           </CardTitle>
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
@@ -58,18 +61,22 @@ export default function FinancialSummary({
           <div className="text-2xl font-bold">
             ${data.projectedEarnings.toLocaleString()}
           </div>
-          <p className="text-xs text-muted-foreground">Next 30 days</p>
+          <p className="text-xs text-muted-foreground">{t("next30Days")}</p>
         </CardContent>
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Project Status</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            {t("projectStatus")}
+          </CardTitle>
           <CheckCircle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{data.activeProjects} Active</div>
+          <div className="text-2xl font-bold">
+            {data.activeProjects} {t("active")}
+          </div>
           <p className="text-xs text-muted-foreground">
-            {data.completedProjects} Completed
+            {data.completedProjects} {t("completed")}
           </p>
         </CardContent>
       </Card>

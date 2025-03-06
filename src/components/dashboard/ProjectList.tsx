@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { t } from "@/locales";
 
 interface ProjectListProps {
   projects: Project[];
@@ -18,9 +19,10 @@ interface ProjectListProps {
 const mockProjects: Project[] = [
   {
     id: "1",
-    title: "Corporate Brand Video",
-    client: "Acme Inc.",
-    description: "Creating a 2-minute brand video for their website homepage",
+    title: "فيديو العلامة التجارية للشركة",
+    client: "شركة أكمي",
+    description:
+      "إنشاء فيديو علامة تجارية مدته دقيقتان للصفحة الرئيسية لموقع الويب الخاص بهم",
     startDate: "2023-10-15",
     dueDate: "2023-11-30",
     budget: 3500,
@@ -28,15 +30,15 @@ const mockProjects: Project[] = [
     hoursWorked: 25,
     status: "in-progress",
     completionPercentage: 65,
-    category: "Video Editing",
+    category: "تحرير الفيديو",
     createdAt: "2023-10-10",
     updatedAt: "2023-10-25",
   },
   {
     id: "2",
-    title: "Website Redesign",
-    client: "TechStart",
-    description: "Complete redesign of company website with new branding",
+    title: "إعادة تصميم الموقع الإلكتروني",
+    client: "تيك ستارت",
+    description: "إعادة تصميم كاملة لموقع الشركة مع العلامة التجارية الجديدة",
     startDate: "2023-09-01",
     dueDate: "2023-12-15",
     budget: 5800,
@@ -44,15 +46,15 @@ const mockProjects: Project[] = [
     hoursWorked: 40,
     status: "in-progress",
     completionPercentage: 35,
-    category: "Web Design",
+    category: "تصميم الويب",
     createdAt: "2023-08-25",
     updatedAt: "2023-10-20",
   },
   {
     id: "3",
-    title: "Product Photography",
-    client: "StyleCo",
-    description: "Product photography for new clothing line",
+    title: "تصوير المنتجات",
+    client: "ستايل كو",
+    description: "تصوير المنتجات لخط الملابس الجديد",
     startDate: "2023-10-01",
     dueDate: "2023-10-15",
     budget: 1200,
@@ -60,15 +62,15 @@ const mockProjects: Project[] = [
     hoursWorked: 20,
     status: "completed",
     completionPercentage: 100,
-    category: "Photography",
+    category: "التصوير الفوتوغرافي",
     createdAt: "2023-09-28",
     updatedAt: "2023-10-16",
   },
   {
     id: "4",
-    title: "Social Media Campaign",
-    client: "FreshFoods",
-    description: "Design assets for Instagram and Facebook campaign",
+    title: "حملة وسائل التواصل الاجتماعي",
+    client: "فريش فودز",
+    description: "تصميم عناصر لحملة إنستغرام وفيسبوك",
     startDate: "2023-11-01",
     dueDate: "2023-12-01",
     budget: 2400,
@@ -76,7 +78,7 @@ const mockProjects: Project[] = [
     hoursWorked: 10,
     status: "pending",
     completionPercentage: 15,
-    category: "Social Media",
+    category: "وسائل التواصل الاجتماعي",
     createdAt: "2023-10-25",
     updatedAt: "2023-10-28",
   },
@@ -118,30 +120,32 @@ export default function ProjectList({
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold">Projects</h2>
+        <h2 className="text-2xl font-bold">{t("projects")}</h2>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Filter by status" />
+              <SelectValue placeholder={t("filterByStatus")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Projects</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="in-progress">In Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="all">{t("allProjects")}</SelectItem>
+              <SelectItem value="pending">{t("pending")}</SelectItem>
+              <SelectItem value="in-progress">{t("inProgress")}</SelectItem>
+              <SelectItem value="completed">{t("completed")}</SelectItem>
+              <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={sort} onValueChange={setSort}>
             <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Sort by" />
+              <SelectValue placeholder={t("sortBy")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">Newest First</SelectItem>
-              <SelectItem value="oldest">Oldest First</SelectItem>
-              <SelectItem value="budget-high">Budget: High to Low</SelectItem>
-              <SelectItem value="budget-low">Budget: Low to High</SelectItem>
-              <SelectItem value="deadline">Upcoming Deadline</SelectItem>
+              <SelectItem value="newest">{t("newestFirst")}</SelectItem>
+              <SelectItem value="oldest">{t("oldestFirst")}</SelectItem>
+              <SelectItem value="budget-high">
+                {t("budgetHighToLow")}
+              </SelectItem>
+              <SelectItem value="budget-low">{t("budgetLowToHigh")}</SelectItem>
+              <SelectItem value="deadline">{t("upcomingDeadline")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -157,10 +161,10 @@ export default function ProjectList({
       </div>
       {sortedProjects.length === 0 && (
         <div className="text-center py-8">
-          <p className="text-muted-foreground mb-4">
-            No projects found matching your filters
-          </p>
-          <Button onClick={() => setFilter("all")}>View All Projects</Button>
+          <p className="text-muted-foreground mb-4">{t("noProjectsFound")}</p>
+          <Button onClick={() => setFilter("all")}>
+            {t("viewAllProjects")}
+          </Button>
         </div>
       )}
     </div>

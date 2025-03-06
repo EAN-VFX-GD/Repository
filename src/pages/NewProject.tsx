@@ -20,18 +20,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
+import { useProjects } from "@/context/ProjectContext";
+import { t } from "@/locales";
 
 export default function NewProject() {
   const navigate = useNavigate();
+  const { addProject } = useProjects();
   const [formData, setFormData] = useState({
     title: "",
     client: "",
     description: "",
-    startDate: "",
+    startDate: new Date().toISOString().split("T")[0],
     dueDate: "",
     budget: "",
     hourlyRate: "",
     category: "",
+    status: "pending",
   });
 
   const handleChange = (
@@ -47,47 +51,63 @@ export default function NewProject() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you would save the project data here
-    console.log("Project data:", formData);
+    // Add the project to the context
+    addProject({
+      title: formData.title,
+      client: formData.client,
+      description: formData.description,
+      startDate: formData.startDate,
+      dueDate: formData.dueDate,
+      budget: parseFloat(formData.budget),
+      hourlyRate: formData.hourlyRate
+        ? parseFloat(formData.hourlyRate)
+        : undefined,
+      status: formData.status as
+        | "pending"
+        | "in-progress"
+        | "completed"
+        | "cancelled",
+      category: formData.category,
+    });
     navigate("/projects");
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-3xl font-bold tracking-tight">New Project</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {t("newProjectTitle")}
+        </h1>
       </div>
 
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
-            <CardTitle>Project Information</CardTitle>
-            <CardDescription>
-              Enter the details for your new project
-            </CardDescription>
+            <CardTitle>{t("projectInformation")}</CardTitle>
+            <CardDescription>{t("enterProjectDetails")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Project Title</Label>
+                <Label htmlFor="title">{t("projectTitle")}</Label>
                 <Input
                   id="title"
                   name="title"
-                  placeholder="Enter project title"
+                  placeholder={t("enterProjectTitle")}
                   value={formData.title}
                   onChange={handleChange}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="client">Client Name</Label>
+                <Label htmlFor="client">{t("clientName")}</Label>
                 <Input
                   id="client"
                   name="client"
-                  placeholder="Enter client name"
+                  placeholder={t("enterClientName")}
                   value={formData.client}
                   onChange={handleChange}
                   required
@@ -96,11 +116,11 @@ export default function NewProject() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Project Description</Label>
+              <Label htmlFor="description">{t("projectDescription")}</Label>
               <Textarea
                 id="description"
                 name="description"
-                placeholder="Describe the project details"
+                placeholder={t("describeProjectDetails")}
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
@@ -110,7 +130,7 @@ export default function NewProject() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="startDate">Start Date</Label>
+                <Label htmlFor="startDate">{t("startDate")}</Label>
                 <Input
                   id="startDate"
                   name="startDate"
@@ -121,7 +141,7 @@ export default function NewProject() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dueDate">Due Date</Label>
+                <Label htmlFor="dueDate">{t("dueDate")}</Label>
                 <Input
                   id="dueDate"
                   name="dueDate"
@@ -135,7 +155,7 @@ export default function NewProject() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="budget">Project Budget ($)</Label>
+                <Label htmlFor="budget">{t("projectBudget")}</Label>
                 <Input
                   id="budget"
                   name="budget"
@@ -147,7 +167,7 @@ export default function NewProject() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="hourlyRate">Hourly Rate ($)</Label>
+                <Label htmlFor="hourlyRate">{t("hourlyRate")}</Label>
                 <Input
                   id="hourlyRate"
                   name="hourlyRate"
@@ -158,7 +178,7 @@ export default function NewProject() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="category">{t("category")}</Label>
                 <Select
                   value={formData.category}
                   onValueChange={(value) =>
@@ -166,17 +186,25 @@ export default function NewProject() {
                   }
                 >
                   <SelectTrigger id="category">
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder={t("selectCategory")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="video-editing">Video Editing</SelectItem>
-                    <SelectItem value="web-design">Web Design</SelectItem>
-                    <SelectItem value="graphic-design">
-                      Graphic Design
+                    <SelectItem value="تحرير الفيديو">
+                      {t("videoEditing")}
                     </SelectItem>
-                    <SelectItem value="photography">Photography</SelectItem>
-                    <SelectItem value="social-media">Social Media</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="تصميم الويب">
+                      {t("webDesign")}
+                    </SelectItem>
+                    <SelectItem value="تصميم جرافيك">
+                      {t("graphicDesign")}
+                    </SelectItem>
+                    <SelectItem value="التصوير الفوتوغرافي">
+                      {t("photography")}
+                    </SelectItem>
+                    <SelectItem value="وسائل التواصل الاجتماعي">
+                      {t("socialMedia")}
+                    </SelectItem>
+                    <SelectItem value="أخرى">{t("other")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -188,9 +216,9 @@ export default function NewProject() {
               type="button"
               onClick={() => navigate(-1)}
             >
-              Cancel
+              {t("cancel")}
             </Button>
-            <Button type="submit">Create Project</Button>
+            <Button type="submit">{t("createProject")}</Button>
           </CardFooter>
         </Card>
       </form>
