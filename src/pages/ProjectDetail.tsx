@@ -18,6 +18,7 @@ import ExpenseForm from "@/components/dashboard/ExpenseForm";
 import DeleteConfirmation from "@/components/dashboard/DeleteConfirmation";
 import ProjectTimeline from "@/components/dashboard/ProjectTimeline";
 import ProgressUpdate from "@/components/dashboard/ProgressUpdate";
+import ProjectEditForm from "@/components/dashboard/ProjectEditForm";
 import { t } from "@/locales";
 
 const statusTranslations = {
@@ -30,8 +31,13 @@ const statusTranslations = {
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { projects, updateProjectProgress, addExpense, deleteProject } =
-    useProjects();
+  const {
+    projects,
+    updateProject,
+    updateProjectProgress,
+    addExpense,
+    deleteProject,
+  } = useProjects();
 
   // Find the project by ID
   const project = projects.find((p) => p.id === id) || projects[0];
@@ -40,6 +46,7 @@ export default function ProjectDetail() {
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [progressDialogOpen, setProgressDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const totalExpenses =
     project.expenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0;
@@ -60,8 +67,11 @@ export default function ProjectDetail() {
   };
 
   const handleEditProject = () => {
-    // In a real app, navigate to edit page or open edit dialog
-    console.log("Edit project", project.id);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateProject = (updatedProject: any) => {
+    updateProject(updatedProject);
   };
 
   return (
@@ -321,6 +331,13 @@ export default function ProjectDetail() {
         onConfirm={handleDeleteProject}
         title={t("deleteProject")}
         description={`هل أنت متأكد من رغبتك في حذف مشروع "${project.title}"؟ لا يمكن التراجع عن هذا الإجراء.`}
+      />
+
+      <ProjectEditForm
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        project={project}
+        onSubmit={handleUpdateProject}
       />
     </div>
   );

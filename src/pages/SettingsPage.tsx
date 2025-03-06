@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,8 +20,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { t } from "@/locales";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function SettingsPage() {
+  const { toast } = useToast();
   const [profileData, setProfileData] = useState({
     name: "محمد أحمد",
     email: "mohamed.ahmed@example.com",
@@ -42,6 +44,22 @@ export default function SettingsPage() {
     dateFormat: "dd/mm/yyyy",
   });
 
+  // Apply theme when it changes
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove("light", "dark");
+
+    if (displaySettings.theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+        .matches
+        ? "dark"
+        : "light";
+      root.classList.add(systemTheme);
+    } else {
+      root.classList.add(displaySettings.theme);
+    }
+  }, [displaySettings.theme]);
+
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setProfileData((prev) => ({ ...prev, [name]: value }));
@@ -56,6 +74,20 @@ export default function SettingsPage() {
 
   const handleDisplayChange = (key: string, value: string) => {
     setDisplaySettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSaveDisplaySettings = () => {
+    toast({
+      title: "تم حفظ الإعدادات",
+      description: "تم تحديث إعدادات العرض بنجاح",
+    });
+  };
+
+  const handleSaveProfile = () => {
+    toast({
+      title: "تم حفظ الملف الشخصي",
+      description: "تم تحديث معلومات الملف الشخصي بنجاح",
+    });
   };
 
   return (
@@ -123,7 +155,7 @@ export default function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button>{t("saveChanges")}</Button>
+              <Button onClick={handleSaveProfile}>{t("saveChanges")}</Button>
             </CardFooter>
           </Card>
 
@@ -306,7 +338,9 @@ export default function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button>{t("saveSettings")}</Button>
+              <Button onClick={handleSaveDisplaySettings}>
+                {t("saveSettings")}
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>

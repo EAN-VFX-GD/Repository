@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Project } from "@/types/project";
+import { t } from "@/locales";
 
 interface ProjectTimelineProps {
   project: Project;
@@ -92,20 +93,20 @@ export default function ProjectTimeline({ project }: ProjectTimelineProps) {
 
     // Draw labels
     ctx.fillStyle = "#000";
-    ctx.font = "14px Arial";
+    ctx.font = "14px Tajawal";
     ctx.textAlign = "center";
 
     // Start date label
     ctx.fillText(formatDate(startDate), lineStart, lineY + 30);
-    ctx.fillText("Start", lineStart, lineY + 50);
+    ctx.fillText(t("start"), lineStart, lineY + 50);
 
     // Current progress label
     ctx.fillText(`${project.completionPercentage}%`, progressX, lineY - 20);
-    ctx.fillText("Progress", progressX, lineY - 40);
+    ctx.fillText(t("progress"), progressX, lineY - 40);
 
     // Due date label
     ctx.fillText(formatDate(dueDate), lineEnd, lineY + 30);
-    ctx.fillText("Due Date", lineEnd, lineY + 50);
+    ctx.fillText(t("dueDate"), lineEnd, lineY + 50);
 
     // Draw today marker if within project timeframe
     if (today >= startDate && today <= dueDate) {
@@ -124,18 +125,18 @@ export default function ProjectTimeline({ project }: ProjectTimelineProps) {
       ctx.fill();
 
       ctx.fillStyle = "#000";
-      ctx.fillText("Today", todayX, lineY - 20);
+      ctx.fillText(t("today"), todayX, lineY - 20);
     }
 
     // Draw title
     ctx.fillStyle = "#000";
-    ctx.font = "bold 16px Arial";
+    ctx.font = "bold 16px Tajawal";
     ctx.textAlign = "center";
-    ctx.fillText("Project Timeline", width / 2, padding / 2);
+    ctx.fillText(t("projectTimeline"), width / 2, padding / 2);
   };
 
   const formatDate = (date: Date) => {
-    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+    return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
   };
 
   return (

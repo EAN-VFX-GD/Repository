@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { t } from "@/locales";
 
 interface ProgressUpdateProps {
   open: boolean;
@@ -46,18 +47,16 @@ export default function ProgressUpdate({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" dir="rtl">
         <DialogHeader>
-          <DialogTitle>Update Progress</DialogTitle>
-          <DialogDescription>
-            Adjust the slider to update the project completion percentage.
-          </DialogDescription>
+          <DialogTitle>{t("updateProgress")}</DialogTitle>
+          <DialogDescription>{t("adjustSlider")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label htmlFor="progress">Completion Percentage</Label>
+                <Label htmlFor="progress">{t("completionPercentage")}</Label>
                 <span className="text-sm font-medium">{progress}%</span>
               </div>
               <Slider
@@ -69,7 +68,8 @@ export default function ProgressUpdate({
                 onValueChange={handleSliderChange}
                 className="w-full"
               />
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 flex-row-reverse">
+                <span className="text-sm">%</span>
                 <Input
                   id="progress"
                   type="number"
@@ -77,14 +77,13 @@ export default function ProgressUpdate({
                   max={100}
                   value={progress}
                   onChange={handleInputChange}
-                  className="w-20"
+                  className="w-20 text-right"
                 />
-                <span className="text-sm">%</span>
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button type="submit">Update Progress</Button>
+          <DialogFooter className="flex justify-start">
+            <Button type="submit">{t("updateProgress")}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

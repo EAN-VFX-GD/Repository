@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Expense } from "@/types/project";
+import { t } from "@/locales";
 
 interface ExpenseFormProps {
   open: boolean;
@@ -70,32 +71,31 @@ export default function ExpenseForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" dir="rtl">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Edit Expense" : "Add Expense"}
+            {isEditing ? t("editExpense") : t("addExpense")}
           </DialogTitle>
           <DialogDescription>
-            {isEditing
-              ? "Update the expense details below."
-              : "Add a new expense to this project."}
+            {isEditing ? t("updateExpenseDetails") : t("addNewExpense")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{t("expenseDescription")}</Label>
               <Input
                 id="description"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Expense description"
+                placeholder="وصف المصروف"
                 required
+                className="text-right"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount ($)</Label>
+              <Label htmlFor="amount">{t("expenseAmount")}</Label>
               <Input
                 id="amount"
                 name="amount"
@@ -105,10 +105,11 @@ export default function ExpenseForm({
                 onChange={handleChange}
                 placeholder="0.00"
                 required
+                className="text-right"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="date">Date</Label>
+              <Label htmlFor="date">{t("expenseDate")}</Label>
               <Input
                 id="date"
                 name="date"
@@ -116,31 +117,32 @@ export default function ExpenseForm({
                 value={formData.date}
                 onChange={handleChange}
                 required
+                className="text-right"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">{t("expenseCategory")}</Label>
               <Select
                 value={formData.category}
                 onValueChange={handleSelectChange}
               >
                 <SelectTrigger id="category">
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder="اختر الفئة" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Assets">Assets</SelectItem>
-                  <SelectItem value="Contractor">Contractor</SelectItem>
-                  <SelectItem value="Software">Software</SelectItem>
-                  <SelectItem value="Hardware">Hardware</SelectItem>
-                  <SelectItem value="Travel">Travel</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
+                  <SelectItem value="الأصول">{t("assets")}</SelectItem>
+                  <SelectItem value="المقاول">{t("contractor")}</SelectItem>
+                  <SelectItem value="البرمجيات">{t("software")}</SelectItem>
+                  <SelectItem value="الأجهزة">{t("hardware")}</SelectItem>
+                  <SelectItem value="السفر">{t("travel")}</SelectItem>
+                  <SelectItem value="أخرى">{t("other")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex justify-start">
             <Button type="submit">
-              {isEditing ? "Update" : "Add"} Expense
+              {isEditing ? t("update") : t("addExpense")}
             </Button>
           </DialogFooter>
         </form>
