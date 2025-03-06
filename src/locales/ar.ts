@@ -200,5 +200,4 @@ export const ar = {
   // Project Timeline
   start: "البداية",
   today: "اليوم",
-  dueDate: "تاريخ الاستحقاق",
 };
