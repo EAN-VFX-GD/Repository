@@ -15,15 +15,7 @@ interface FinancialSummaryProps {
   data: FinancialSummaryType;
 }
 
-export default function FinancialSummary({
-  data = {
-    totalPortfolioValue: 24500,
-    pendingPayments: 8750,
-    projectedEarnings: 32000,
-    completedProjects: 12,
-    activeProjects: 5,
-  },
-}: Partial<FinancialSummaryProps>) {
+export default function FinancialSummary({ data }: FinancialSummaryProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = () => {

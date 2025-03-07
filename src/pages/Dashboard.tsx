@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import FinancialSummary from "@/components/dashboard/FinancialSummary";
 import ProjectList from "@/components/dashboard/ProjectList";
 import VodafoneCashBalance from "@/components/dashboard/VodafoneCashBalance";
@@ -8,7 +9,13 @@ import { t } from "@/locales";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { projects, financialSummary } = useProjects();
+  const { projects, financialSummary, refreshProjects, loading } =
+    useProjects();
+
+  // Refresh data when component mounts
+  useEffect(() => {
+    refreshProjects();
+  }, []);
 
   const handleProjectClick = (project: Project) => {
     navigate(`/projects/${project.id}`);
@@ -25,7 +32,13 @@ export default function Dashboard() {
 
       <div className="grid gap-4 md:grid-cols-5">
         <div className="md:col-span-4">
-          <FinancialSummary data={financialSummary} />
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <FinancialSummary data={financialSummary} />
+          )}
         </div>
         <div className="md:col-span-1">
           <VodafoneCashBalance />

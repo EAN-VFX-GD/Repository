@@ -1,121 +1,51 @@
 import { supabase } from "@/lib/supabase";
 import { Project, Expense, FinancialSummary } from "@/types/project";
-import { Database } from "@/types/supabase";
-
-// User profile
-export async function getUserProfile() {
-  const { data: user, error } = await supabase.auth.getUser();
-  if (error) throw error;
-
-  const { data, error: profileError } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.user?.id)
-    .single();
-
-  if (profileError) throw profileError;
-  return data;
-}
-
-export async function updateUserProfile(updates: any) {
-  const { data: user, error } = await supabase.auth.getUser();
-  if (error) throw error;
-
-  const { data, error: updateError } = await supabase
-    .from("users")
-    .update(updates)
-    .eq("id", user.user?.id)
-    .select()
-    .single();
-
-  if (updateError) throw updateError;
-  return data;
-}
-
-// User settings
-export async function getUserSettings() {
-  const { data: user, error } = await supabase.auth.getUser();
-  if (error) throw error;
-
-  const { data, error: settingsError } = await supabase
-    .from("user_settings")
-    .select("*")
-    .eq("user_id", user.user?.id)
-    .single();
-
-  if (settingsError) throw settingsError;
-  return data;
-}
-
-export async function updateUserSettings(updates: any) {
-  const { data: user, error } = await supabase.auth.getUser();
-  if (error) throw error;
-
-  const { data, error: updateError } = await supabase
-    .from("user_settings")
-    .update(updates)
-    .eq("user_id", user.user?.id)
-    .select()
-    .single();
-
-  if (updateError) throw updateError;
-  return data;
-}
+import { v4 as uuidv4 } from "uuid";
 
 // Projects
-export async function getProjects() {
-  const { data, error } = await supabase
-    .from("projects")
-    .select("*")
-    .order("created_at", { ascending: false });
+export async function getProjects(): Promise<Project[]> {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user || !user.user) throw new Error("User not authenticated");
 
-  if (error) throw error;
+    const { data, error } = await supabase
+      .from("projects")
+      .select("*, expenses(*)")
+      .eq("user_id", user.user.id)
+      .order("created_at", { ascending: false });
 
-  // Convert from database format to frontend format
-  return data.map((project) => ({
-    id: project.id,
-    title: project.title,
-    client: project.client,
-    description: project.description || "",
-    startDate: project.start_date,
-    dueDate: project.due_date,
-    budget: project.budget,
-    hourlyRate: project.hourly_rate,
-    hoursWorked: project.hours_worked,
-    status: project.status,
-    completionPercentage: project.completion_percentage,
-    category: project.category || "",
-    createdAt: project.created_at,
-    updatedAt: project.updated_at,
-  })) as Project[];
-}
+    if (error) throw error;
 
-export async function getProject(id: string) {
-  const { data, error } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) throw error;
-
-  // Convert from database format to frontend format
-  return {
-    id: data.id,
-    title: data.title,
-    client: data.client,
-    description: data.description || "",
-    startDate: data.start_date,
-    dueDate: data.due_date,
-    budget: data.budget,
-    hourlyRate: data.hourly_rate,
-    hoursWorked: data.hours_worked,
-    status: data.status,
-    completionPercentage: data.completion_percentage,
-    category: data.category || "",
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-  } as Project;
+    // Transform the data to match our Project type
+    return (data || []).map((project) => ({
+      id: project.id,
+      title: project.title,
+      client: project.client,
+      description: project.description || "",
+      startDate: project.start_date,
+      dueDate: project.due_date,
+      budget: project.budget,
+      hourlyRate: project.hourly_rate,
+      hoursWorked: project.hours_worked,
+      status: project.status,
+      completionPercentage: project.completion_percentage || 0,
+      category: project.category || "",
+      createdAt: project.created_at,
+      updatedAt: project.updated_at,
+      expenses: project.expenses
+        ? project.expenses.map((expense: any) => ({
+            id: expense.id,
+            description: expense.description,
+            amount: expense.amount,
+            date: expense.date,
+            category: expense.category || "",
+          }))
+        : [],
+    }));
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    throw error;
+  }
 }
 
 export async function createProject(
@@ -123,15 +53,15 @@ export async function createProject(
     Project,
     "id" | "createdAt" | "updatedAt" | "completionPercentage"
   >,
-) {
-  const { data: user, error: userError } = await supabase.auth.getUser();
-  if (userError) throw userError;
+): Promise<Project> {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user || !user.user) throw new Error("User not authenticated");
 
-  // Convert from frontend format to database format
-  const { data, error } = await supabase
-    .from("projects")
-    .insert({
-      user_id: user.user?.id,
+    const now = new Date().toISOString();
+    const newProject = {
+      id: uuidv4(),
+      user_id: user.user.id,
       title: project.title,
       client: project.client,
       description: project.description,
@@ -143,36 +73,50 @@ export async function createProject(
       status: project.status,
       completion_percentage: 0,
       category: project.category,
-    })
-    .select()
-    .single();
+      created_at: now,
+      updated_at: now,
+    };
 
-  if (error) throw error;
+    const { data, error } = await supabase
+      .from("projects")
+      .insert(newProject)
+      .select("*")
+      .single();
 
-  // Convert back to frontend format
-  return {
-    id: data.id,
-    title: data.title,
-    client: data.client,
-    description: data.description || "",
-    startDate: data.start_date,
-    dueDate: data.due_date,
-    budget: data.budget,
-    hourlyRate: data.hourly_rate,
-    hoursWorked: data.hours_worked,
-    status: data.status,
-    completionPercentage: data.completion_percentage,
-    category: data.category || "",
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-  } as Project;
+    if (error) throw error;
+    if (!data) throw new Error("Failed to create project");
+
+    // Return the project in our format
+    return {
+      id: data.id,
+      title: data.title,
+      client: data.client,
+      description: data.description || "",
+      startDate: data.start_date,
+      dueDate: data.due_date,
+      budget: data.budget,
+      hourlyRate: data.hourly_rate,
+      hoursWorked: data.hours_worked,
+      status: data.status,
+      completionPercentage: data.completion_percentage || 0,
+      category: data.category || "",
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      expenses: [],
+    };
+  } catch (error) {
+    console.error("Error creating project:", error);
+    throw error;
+  }
 }
 
-export async function updateProject(project: Project) {
-  // Convert from frontend format to database format
-  const { data, error } = await supabase
-    .from("projects")
-    .update({
+export async function updateProject(project: Project): Promise<Project> {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user || !user.user) throw new Error("User not authenticated");
+
+    const now = new Date().toISOString();
+    const updatedProject = {
       title: project.title,
       client: project.client,
       description: project.description,
@@ -184,139 +128,191 @@ export async function updateProject(project: Project) {
       status: project.status,
       completion_percentage: project.completionPercentage,
       category: project.category,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", project.id)
-    .select()
-    .single();
+      updated_at: now,
+    };
 
-  if (error) throw error;
+    const { data, error } = await supabase
+      .from("projects")
+      .update(updatedProject)
+      .eq("id", project.id)
+      .eq("user_id", user.user.id)
+      .select("*, expenses(*)")
+      .single();
 
-  // Convert back to frontend format
-  return {
-    id: data.id,
-    title: data.title,
-    client: data.client,
-    description: data.description || "",
-    startDate: data.start_date,
-    dueDate: data.due_date,
-    budget: data.budget,
-    hourlyRate: data.hourly_rate,
-    hoursWorked: data.hours_worked,
-    status: data.status,
-    completionPercentage: data.completion_percentage,
-    category: data.category || "",
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-  } as Project;
+    if (error) throw error;
+    if (!data) throw new Error("Failed to update project");
+
+    // Return the project in our format
+    return {
+      id: data.id,
+      title: data.title,
+      client: data.client,
+      description: data.description || "",
+      startDate: data.start_date,
+      dueDate: data.due_date,
+      budget: data.budget,
+      hourlyRate: data.hourly_rate,
+      hoursWorked: data.hours_worked,
+      status: data.status,
+      completionPercentage: data.completion_percentage || 0,
+      category: data.category || "",
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      expenses: data.expenses
+        ? data.expenses.map((expense: any) => ({
+            id: expense.id,
+            description: expense.description,
+            amount: expense.amount,
+            date: expense.date,
+            category: expense.category || "",
+          }))
+        : [],
+    };
+  } catch (error) {
+    console.error("Error updating project:", error);
+    throw error;
+  }
 }
 
-export async function deleteProject(id: string) {
-  const { error } = await supabase.from("projects").delete().eq("id", id);
-  if (error) throw error;
-  return true;
+export async function deleteProject(id: string): Promise<void> {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user || !user.user) throw new Error("User not authenticated");
+
+    // Delete all expenses for the project first
+    const { error: expensesError } = await supabase
+      .from("expenses")
+      .delete()
+      .eq("project_id", id);
+
+    if (expensesError) throw expensesError;
+
+    // Then delete the project
+    const { error } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.user.id);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error("Error deleting project:", error);
+    throw error;
+  }
 }
 
 // Expenses
-export async function getProjectExpenses(projectId: string) {
-  const { data, error } = await supabase
-    .from("expenses")
-    .select("*")
-    .eq("project_id", projectId)
-    .order("date", { ascending: false });
-
-  if (error) throw error;
-
-  // Convert from database format to frontend format
-  return data.map((expense) => ({
-    id: expense.id,
-    description: expense.description,
-    amount: expense.amount,
-    date: expense.date,
-    category: expense.category || "",
-  })) as Expense[];
-}
-
 export async function addExpense(
   projectId: string,
   expense: Omit<Expense, "id">,
-) {
-  // Convert from frontend format to database format
-  const { data, error } = await supabase
-    .from("expenses")
-    .insert({
+): Promise<Expense> {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user || !user.user) throw new Error("User not authenticated");
+
+    const now = new Date().toISOString();
+    const newExpense = {
+      id: uuidv4(),
       project_id: projectId,
       description: expense.description,
       amount: expense.amount,
       date: expense.date,
       category: expense.category,
-    })
-    .select()
-    .single();
+      created_at: now,
+      updated_at: now,
+    };
 
-  if (error) throw error;
+    const { data, error } = await supabase
+      .from("expenses")
+      .insert(newExpense)
+      .select("*")
+      .single();
 
-  // Convert back to frontend format
-  return {
-    id: data.id,
-    description: data.description,
-    amount: data.amount,
-    date: data.date,
-    category: data.category || "",
-  } as Expense;
+    if (error) throw error;
+    if (!data) throw new Error("Failed to add expense");
+
+    // Return the expense in our format
+    return {
+      id: data.id,
+      description: data.description,
+      amount: data.amount,
+      date: data.date,
+      category: data.category || "",
+    };
+  } catch (error) {
+    console.error("Error adding expense:", error);
+    throw error;
+  }
 }
 
-export async function updateExpense(projectId: string, expense: Expense) {
-  // Convert from frontend format to database format
-  const { data, error } = await supabase
-    .from("expenses")
-    .update({
+export async function updateExpense(
+  projectId: string,
+  expense: Expense,
+): Promise<Expense> {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user || !user.user) throw new Error("User not authenticated");
+
+    const now = new Date().toISOString();
+    const updatedExpense = {
       description: expense.description,
       amount: expense.amount,
       date: expense.date,
       category: expense.category,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", expense.id)
-    .eq("project_id", projectId)
-    .select()
-    .single();
+      updated_at: now,
+    };
 
-  if (error) throw error;
+    const { data, error } = await supabase
+      .from("expenses")
+      .update(updatedExpense)
+      .eq("id", expense.id)
+      .eq("project_id", projectId)
+      .select("*")
+      .single();
 
-  // Convert back to frontend format
-  return {
-    id: data.id,
-    description: data.description,
-    amount: data.amount,
-    date: data.date,
-    category: data.category || "",
-  } as Expense;
+    if (error) throw error;
+    if (!data) throw new Error("Failed to update expense");
+
+    // Return the expense in our format
+    return {
+      id: data.id,
+      description: data.description,
+      amount: data.amount,
+      date: data.date,
+      category: data.category || "",
+    };
+  } catch (error) {
+    console.error("Error updating expense:", error);
+    throw error;
+  }
 }
 
-export async function deleteExpense(projectId: string, expenseId: string) {
-  const { error } = await supabase
-    .from("expenses")
-    .delete()
-    .eq("id", expenseId)
-    .eq("project_id", projectId);
+export async function deleteExpense(
+  projectId: string,
+  expenseId: string,
+): Promise<void> {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user || !user.user) throw new Error("User not authenticated");
 
-  if (error) throw error;
-  return true;
+    const { error } = await supabase
+      .from("expenses")
+      .delete()
+      .eq("id", expenseId)
+      .eq("project_id", projectId);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error("Error deleting expense:", error);
+    throw error;
+  }
 }
 
 // Financial Summary
 export async function getFinancialSummary(): Promise<FinancialSummary> {
   try {
-    // Use the edge function to calculate the financial summary
-    const { data, error } = await supabase.functions.invoke("project-summary");
-
-    if (error) throw error;
-    return data as FinancialSummary;
-  } catch (error) {
-    console.error("Error fetching financial summary:", error);
-
-    // Return default values if there's an error
+    // Skip edge function and return empty data to be calculated locally
+    // This is a temporary solution until the edge function CORS is fixed
     return {
       totalPortfolioValue: 0,
       pendingPayments: 0,
@@ -324,58 +320,23 @@ export async function getFinancialSummary(): Promise<FinancialSummary> {
       completedProjects: 0,
       activeProjects: 0,
     };
+
+    /* Commented out until CORS is fixed
+    // Use the edge function to calculate the financial summary
+    const { data, error } = await supabase.functions.invoke(
+      "supabase-functions-financial-summary",
+    );
+
+    if (error) throw error;
+
+    // Verify data is valid
+    if (!data || typeof data !== "object")
+      throw new Error("Invalid data returned from financial summary function");
+
+    return data as FinancialSummary;
+    */
+  } catch (error) {
+    console.error("Error fetching financial summary:", error);
+    throw error; // Let the caller handle the error and calculate summary from projects
   }
-}
-
-// Notifications
-export async function getNotifications() {
-  const { data, error } = await supabase
-    .from("notifications")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  return data;
-}
-
-export async function markNotificationAsRead(id: string) {
-  const { data, error } = await supabase
-    .from("notifications")
-    .update({ read: true })
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function deleteNotification(id: string) {
-  const { error } = await supabase.from("notifications").delete().eq("id", id);
-  if (error) throw error;
-  return true;
-}
-
-// Storage functions for file uploads
-export async function uploadFile(bucket: string, path: string, file: File) {
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .upload(path, file, {
-      cacheControl: "3600",
-      upsert: true,
-    });
-
-  if (error) throw error;
-  return data;
-}
-
-export async function getFileUrl(bucket: string, path: string) {
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
-}
-
-export async function deleteFile(bucket: string, path: string) {
-  const { error } = await supabase.storage.from(bucket).remove([path]);
-  if (error) throw error;
-  return true;
 }

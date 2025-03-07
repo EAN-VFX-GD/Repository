@@ -39,7 +39,7 @@ const initialFinancialSummary: FinancialSummary = {
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
-function ProjectProvider({ children }: { children: React.ReactNode }) {
+export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [financialSummary, setFinancialSummary] = useState<FinancialSummary>(
     initialFinancialSummary,
@@ -52,6 +52,13 @@ function ProjectProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user) {
       refreshProjects();
+
+      // Set up a refresh interval to keep the financial summary updated
+      const intervalId = setInterval(() => {
+        refreshProjects();
+      }, 60000); // Refresh every minute
+
+      return () => clearInterval(intervalId);
     }
   }, [user]);
 
@@ -68,15 +75,74 @@ function ProjectProvider({ children }: { children: React.ReactNode }) {
       // Load financial summary
       const summaryData = await api.getFinancialSummary();
       setFinancialSummary(summaryData);
+
+      // Calculate financial summary from projects if API fails
+      if (
+        !summaryData ||
+        Object.values(summaryData).every((val) => val === 0)
+      ) {
+        calculateFinancialSummary(projectsData);
+      }
     } catch (error: any) {
       toast({
         title: "خطأ في تحميل البيانات",
         description: error.message,
         variant: "destructive",
       });
+      // Calculate summary from projects if API fails
+      calculateFinancialSummary(projects);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Calculate financial summary from projects
+  const calculateFinancialSummary = (projectsList: Project[]) => {
+    const summary: FinancialSummary = {
+      totalPortfolioValue: 0,
+      pendingPayments: 0,
+      projectedEarnings: 0,
+      completedProjects: 0,
+      activeProjects: 0,
+    };
+
+    projectsList.forEach((project) => {
+      // Total portfolio value is the sum of all project budgets
+      summary.totalPortfolioValue += project.budget;
+
+      // Count completed and active projects
+      if (project.status === "completed") {
+        summary.completedProjects += 1;
+      } else if (
+        project.status === "pending" ||
+        project.status === "in-progress"
+      ) {
+        summary.activeProjects += 1;
+
+        // Calculate pending payments based on completion percentage
+        const percentRemaining = 1 - project.completionPercentage / 100;
+        summary.pendingPayments += project.budget * percentRemaining;
+
+        // Calculate projected earnings for the next 30 days
+        const dueDate = new Date(project.dueDate);
+        const now = new Date();
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(now.getDate() + 30);
+
+        if (dueDate <= thirtyDaysFromNow) {
+          summary.projectedEarnings += project.budget;
+        }
+      }
+    });
+
+    // Round to 2 decimal places
+    summary.totalPortfolioValue =
+      Math.round(summary.totalPortfolioValue * 100) / 100;
+    summary.pendingPayments = Math.round(summary.pendingPayments * 100) / 100;
+    summary.projectedEarnings =
+      Math.round(summary.projectedEarnings * 100) / 100;
+
+    setFinancialSummary(summary);
   };
 
   // Add a new project
@@ -313,7 +379,7 @@ function ProjectProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-function useProjects() {
+export function useProjects() {
   const context = useContext(ProjectContext);
   if (context === undefined) {
     throw new Error("useProjects must be used within a ProjectProvider");
@@ -321,4 +387,4 @@ function useProjects() {
   return context;
 }
 
-export { ProjectProvider, useProjects };
+// Export statement removed as functions are now directly exported

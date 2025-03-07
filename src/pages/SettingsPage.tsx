@@ -66,6 +66,101 @@ export default function SettingsPage() {
     dateFormat: "dd/mm/yyyy",
   });
 
+  // Load user settings from the database
+  useEffect(() => {
+    const loadUserSettings = async () => {
+      try {
+        const { data: user } = await supabase.auth.getUser();
+        if (!user || !user.user) return;
+
+        // Load user profile
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", user.user.id)
+          .single();
+
+        if (userError) throw userError;
+
+        if (userData) {
+          setProfileData({
+            name: userData.name || "محمد أحمد",
+            email: userData.email || "mohamed.ahmed@example.com",
+            company: userData.company || "استوديو الإبداع",
+            avatar:
+              userData.avatar_url ||
+              "https://api.dicebear.com/7.x/avataaars/svg?seed=user123",
+          });
+        }
+
+        // Load user settings
+        const { data: settingsData, error: settingsError } = await supabase
+          .from("user_settings")
+          .select("*")
+          .eq("user_id", user.user.id)
+          .single();
+
+        if (settingsError && settingsError.code !== "PGRST116") {
+          // If settings don't exist, create them
+          if (settingsError.code === "PGRST116") {
+            const { error: insertError } = await supabase
+              .from("user_settings")
+              .insert({
+                user_id: user.user.id,
+                theme: "light",
+                currency: "usd",
+                date_format: "dd/mm/yyyy",
+                email_notifications: true,
+                project_reminders: true,
+                payment_alerts: true,
+                weekly_reports: false,
+              });
+
+            if (insertError) throw insertError;
+          } else {
+            throw settingsError;
+          }
+        }
+
+        if (settingsData) {
+          // Update display settings
+          setDisplaySettings({
+            theme: settingsData.theme || "light",
+            currency: settingsData.currency || "usd",
+            dateFormat: settingsData.date_format || "dd/mm/yyyy",
+          });
+
+          // Update notification settings
+          setNotificationSettings({
+            emailNotifications: settingsData.email_notifications ?? true,
+            projectReminders: settingsData.project_reminders ?? true,
+            paymentAlerts: settingsData.payment_alerts ?? true,
+            weeklyReports: settingsData.weekly_reports ?? false,
+          });
+
+          // Apply theme
+          const root = window.document.documentElement;
+          root.classList.remove("light", "dark");
+
+          if (settingsData.theme === "system") {
+            const systemTheme = window.matchMedia(
+              "(prefers-color-scheme: dark)",
+            ).matches
+              ? "dark"
+              : "light";
+            root.classList.add(systemTheme);
+          } else {
+            root.classList.add(settingsData.theme || "light");
+          }
+        }
+      } catch (error) {
+        console.error("Error loading user settings:", error);
+      }
+    };
+
+    loadUserSettings();
+  }, []);
+
   // Apply theme when it changes
   useEffect(() => {
     const root = window.document.documentElement;
@@ -92,54 +187,175 @@ export default function SettingsPage() {
     setPasswordData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleNotificationToggle = (key: string) => {
-    setNotificationSettings((prev) => ({
-      ...prev,
-      [key]: !prev[key as keyof typeof notificationSettings],
-    }));
+  const handleNotificationToggle = async (key: string) => {
+    try {
+      // Update local state
+      setNotificationSettings((prev) => ({
+        ...prev,
+        [key]: !prev[key as keyof typeof notificationSettings],
+      }));
 
-    toast({
-      title: "تم تحديث الإعدادات",
-      description: "تم تحديث إعدادات الإشعارات بنجاح",
-    });
-  };
+      const { data: user } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not found");
 
-  const handleDisplayChange = (key: string, value: string) => {
-    setDisplaySettings((prev) => ({ ...prev, [key]: value }));
+      // Get the updated value
+      const updatedValue =
+        !notificationSettings[key as keyof typeof notificationSettings];
 
-    // Apply theme change immediately
-    if (key === "theme") {
-      const root = window.document.documentElement;
-      root.classList.remove("light", "dark");
+      // Check if user settings exist
+      const { data: existingSettings, error: checkError } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("user_id", user.user?.id)
+        .single();
 
-      if (value === "system") {
-        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-          .matches
-          ? "dark"
-          : "light";
-        root.classList.add(systemTheme);
+      // Update the specific setting in the database
+      const updateData: any = {};
+      updateData[key] = updatedValue;
+      updateData.updated_at = new Date().toISOString();
+
+      if (checkError && checkError.code === "PGRST116") {
+        // Settings don't exist, create them with defaults and the new value
+        const insertData: any = {
+          user_id: user.user?.id,
+          theme: displaySettings.theme,
+          currency: displaySettings.currency,
+          date_format: displaySettings.dateFormat,
+          email_notifications: notificationSettings.emailNotifications,
+          project_reminders: notificationSettings.projectReminders,
+          payment_alerts: notificationSettings.paymentAlerts,
+          weekly_reports: notificationSettings.weeklyReports,
+          ...updateData,
+        };
+
+        const { error: insertError } = await supabase
+          .from("user_settings")
+          .insert(insertData);
+
+        if (insertError) throw insertError;
       } else {
-        root.classList.add(value);
+        // Settings exist, update them
+        const { error } = await supabase
+          .from("user_settings")
+          .update(updateData)
+          .eq("user_id", user.user?.id);
+
+        if (error) throw error;
       }
 
       toast({
-        title:
-          value === "dark" ? "تم تفعيل الوضع الداكن" : "تم تفعيل الوضع الفاتح",
-        description: "تم تغيير سمة التطبيق بنجاح",
+        title: "تم تحديث الإعدادات",
+        description: "تم تحديث إعدادات الإشعارات بنجاح",
+      });
+    } catch (error) {
+      console.error("Error toggling notification setting:", error);
+      // Revert the local state change if there was an error
+      setNotificationSettings((prev) => ({
+        ...prev,
+        [key]: prev[key as keyof typeof notificationSettings],
+      }));
+
+      toast({
+        title: "خطأ في تحديث الإعدادات",
+        description: error.message,
+        variant: "destructive",
       });
     }
+  };
 
-    if (key === "currency") {
-      toast({
-        title: "تم تغيير العملة",
-        description: `تم تغيير العملة إلى ${getCurrencyName(value)}`,
-      });
-    }
+  const handleDisplayChange = async (key: string, value: string) => {
+    try {
+      // Update local state
+      setDisplaySettings((prev) => ({ ...prev, [key]: value }));
 
-    if (key === "dateFormat") {
+      // Apply theme change immediately
+      if (key === "theme") {
+        const root = window.document.documentElement;
+        root.classList.remove("light", "dark");
+
+        if (value === "system") {
+          const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+            .matches
+            ? "dark"
+            : "light";
+          root.classList.add(systemTheme);
+        } else {
+          root.classList.add(value);
+        }
+      }
+
+      // Update the setting in the database
+      const { data: user } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not found");
+
+      // Check if user settings exist
+      const { data: existingSettings, error: checkError } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("user_id", user.user?.id)
+        .single();
+
+      const updateData: any = {};
+      // Map the key to the database column name
+      const dbKey = key === "dateFormat" ? "date_format" : key;
+      updateData[dbKey] = value;
+      updateData.updated_at = new Date().toISOString();
+
+      if (checkError && checkError.code === "PGRST116") {
+        // Settings don't exist, create them with defaults and the new value
+        const insertData: any = {
+          user_id: user.user?.id,
+          theme: "light",
+          currency: "usd",
+          date_format: "dd/mm/yyyy",
+          email_notifications: true,
+          project_reminders: true,
+          payment_alerts: true,
+          weekly_reports: false,
+          ...updateData,
+        };
+
+        const { error: insertError } = await supabase
+          .from("user_settings")
+          .insert(insertData);
+
+        if (insertError) throw insertError;
+      } else {
+        // Settings exist, update them
+        const { error } = await supabase
+          .from("user_settings")
+          .update(updateData)
+          .eq("user_id", user.user?.id);
+
+        if (error) throw error;
+      }
+
+      // Show appropriate toast message
+      if (key === "theme") {
+        toast({
+          title:
+            value === "dark"
+              ? "تم تفعيل الوضع الداكن"
+              : "تم تفعيل الوضع الفاتح",
+          description: "تم تغيير سمة التطبيق بنجاح",
+        });
+      } else if (key === "currency") {
+        toast({
+          title: "تم تغيير العملة",
+          description: `تم تغيير العملة إلى ${getCurrencyName(value)}`,
+        });
+      } else if (key === "dateFormat") {
+        toast({
+          title: "تم تغيير تنسيق التاريخ",
+          description: `تم تغيير تنسيق التاريخ إلى ${value}`,
+        });
+      }
+    } catch (error) {
+      console.error("Error updating display setting:", error);
       toast({
-        title: "تم تغيير تنسيق التاريخ",
-        description: `تم تغيير تنسيق التاريخ إلى ${value}`,
+        title: "خطأ في تحديث الإعدادات",
+        description: error.message,
+        variant: "destructive",
       });
     }
   };
@@ -161,21 +377,97 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveDisplaySettings = () => {
-    toast({
-      title: "تم حفظ الإعدادات",
-      description: "تم تحديث إعدادات العرض بنجاح",
-    });
+  const handleSaveDisplaySettings = async () => {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not found");
+
+      // Check if user settings exist
+      const { data: existingSettings, error: checkError } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("user_id", user.user?.id)
+        .single();
+
+      if (checkError && checkError.code === "PGRST116") {
+        // Settings don't exist, create them
+        const { error: insertError } = await supabase
+          .from("user_settings")
+          .insert({
+            user_id: user.user?.id,
+            theme: displaySettings.theme,
+            currency: displaySettings.currency,
+            date_format: displaySettings.dateFormat,
+            email_notifications: notificationSettings.emailNotifications,
+            project_reminders: notificationSettings.projectReminders,
+            payment_alerts: notificationSettings.paymentAlerts,
+            weekly_reports: notificationSettings.weeklyReports,
+          });
+
+        if (insertError) throw insertError;
+      } else {
+        // Settings exist, update them
+        const { error } = await supabase
+          .from("user_settings")
+          .update({
+            theme: displaySettings.theme,
+            currency: displaySettings.currency,
+            date_format: displaySettings.dateFormat,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", user.user?.id);
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "تم حفظ الإعدادات",
+        description: "تم تحديث إعدادات العرض بنجاح",
+      });
+    } catch (error) {
+      console.error("Error updating display settings:", error);
+      toast({
+        title: "خطأ في حفظ الإعدادات",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSaveProfile = () => {
-    toast({
-      title: "تم حفظ الملف الشخصي",
-      description: "تم تحديث معلومات الملف الشخصي بنجاح",
-    });
+  const handleSaveProfile = async () => {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not found");
+
+      // Update user profile in the database
+      const { error } = await supabase
+        .from("users")
+        .update({
+          name: profileData.name,
+          email: profileData.email,
+          company: profileData.company,
+          avatar_url: profileData.avatar,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.user?.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "تم حفظ الملف الشخصي",
+        description: "تم تحديث معلومات الملف الشخصي بنجاح",
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "خطأ في حفظ الملف الشخصي",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleUpdatePassword = () => {
+  const handleUpdatePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast({
         title: "خطأ في كلمة المرور",
@@ -194,23 +486,103 @@ export default function SettingsPage() {
       return;
     }
 
-    toast({
-      title: "تم تحديث كلمة المرور",
-      description: "تم تغيير كلمة المرور بنجاح",
-    });
+    try {
+      // First verify the current password by attempting to sign in
+      const { data: user } = await supabase.auth.getUser();
+      if (!user || !user.user) throw new Error("User not found");
 
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.user.email || "",
+        password: passwordData.currentPassword,
+      });
+
+      if (signInError) {
+        throw new Error("كلمة المرور الحالية غير صحيحة");
+      }
+
+      // Update the password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordData.newPassword,
+      });
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "تم تحديث كلمة المرور",
+        description: "تم تغيير كلمة المرور بنجاح",
+      });
+
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      console.error("Error updating password:", error);
+      toast({
+        title: "خطأ في تحديث كلمة المرور",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSaveNotificationSettings = () => {
-    toast({
-      title: "تم حفظ التفضيلات",
-      description: "تم تحديث تفضيلات الإشعارات بنجاح",
-    });
+  const handleSaveNotificationSettings = async () => {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not found");
+
+      // Check if user settings exist
+      const { data: existingSettings, error: checkError } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("user_id", user.user?.id)
+        .single();
+
+      if (checkError && checkError.code === "PGRST116") {
+        // Settings don't exist, create them
+        const { error: insertError } = await supabase
+          .from("user_settings")
+          .insert({
+            user_id: user.user?.id,
+            email_notifications: notificationSettings.emailNotifications,
+            project_reminders: notificationSettings.projectReminders,
+            payment_alerts: notificationSettings.paymentAlerts,
+            weekly_reports: notificationSettings.weeklyReports,
+            theme: displaySettings.theme,
+            currency: displaySettings.currency,
+            date_format: displaySettings.dateFormat,
+          });
+
+        if (insertError) throw insertError;
+      } else {
+        // Settings exist, update them
+        const { error } = await supabase
+          .from("user_settings")
+          .update({
+            email_notifications: notificationSettings.emailNotifications,
+            project_reminders: notificationSettings.projectReminders,
+            payment_alerts: notificationSettings.paymentAlerts,
+            weekly_reports: notificationSettings.weeklyReports,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", user.user?.id);
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "تم حفظ التفضيلات",
+        description: "تم تحديث تفضيلات الإشعارات بنجاح",
+      });
+    } catch (error) {
+      console.error("Error updating notification settings:", error);
+      toast({
+        title: "خطأ في حفظ التفضيلات",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAvatarChange = () => {
